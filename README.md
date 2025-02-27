@@ -40,8 +40,8 @@ Ensure you have Python and the required dependencies installed:
 pip install numpy pandas scikit-learn shap lime matplotlib seaborn tensorflow keras
 ```
 
-## Running the Model
-# Clone the repository and run the main script:
+# Running the Model
+## Clone the repository and run the main script:
 
 ```sh
 git clone https://github.com/yourusername/miRNA-Disease-Prediction.git
