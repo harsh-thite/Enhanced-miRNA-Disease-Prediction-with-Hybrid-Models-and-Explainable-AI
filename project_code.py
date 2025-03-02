@@ -196,7 +196,7 @@ def main():
     df = preprocess_data()
     features, labels = feature_engineering(df)
     ann, features_test = train_and_evaluate_models(features, labels)
-    save_predictions(ann, features_test)  # ✅ Saving Predictions
+    save_predictions(ann, features_test)  # Saving Predictions
 
 
 if __name__ == "__main__":
