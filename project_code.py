@@ -50,7 +50,7 @@ def feature_engineering(df):
     selector = SelectKBest(score_func=f_classif, k=20)  # Reduce overfitting
     features_selected = selector.fit_transform(features_scaled, labels)
 
-    # ✅ Feature Correlation Heatmap
+    # Feature Correlation Heatmap
     plt.figure(figsize=(12, 8))
     correlation_matrix = pd.DataFrame(features_selected).corr()
     sns.heatmap(correlation_matrix, annot=False, cmap='coolwarm')
@@ -69,7 +69,7 @@ def train_and_evaluate_models(features, labels):
     smote = SMOTE(sampling_strategy=0.5, random_state=42)
     features_train_balanced, labels_train_balanced = smote.fit_resample(features_train, labels_train)
 
-    # ✅ Class Distribution Graph (Before & After SMOTE)
+    # Class Distribution Graph (Before & After SMOTE)
     plt.figure(figsize=(6, 4))
     sns.barplot(x=["Original Class 0", "Original Class 1"], y=[sum(labels_train == 0), sum(labels_train == 1)],
                 color='blue', label="Before SMOTE")
