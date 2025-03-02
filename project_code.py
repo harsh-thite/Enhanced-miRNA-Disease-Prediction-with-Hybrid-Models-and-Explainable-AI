@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, classification_report, precision_recall_fscore_support
+from sklearn.model_selection import StratifiedShuffleSplit
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, classification_report, precision_recall_fscore_support, roc_curve, auc, precision_recall_curve
 from sklearn.preprocessing import RobustScaler
 from sklearn.feature_selection import SelectKBest, f_classif
 from sklearn.ensemble import VotingClassifier, RandomForestClassifier
@@ -14,7 +14,6 @@ from imblearn.over_sampling import SMOTE
 import shap
 import tensorflow as tf
 import category_encoders as ce
-from scipy.stats import ttest_rel
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -46,7 +45,7 @@ def feature_engineering(df):
     scaler = RobustScaler()
     features_scaled = scaler.fit_transform(features_encoded)
 
-    selector = SelectKBest(score_func=f_classif, k=30)  # Reduced from 50 to 30
+    selector = SelectKBest(score_func=f_classif, k=20)  # Reduce overfitting
     features_selected = selector.fit_transform(features_scaled, labels)
 
     plt.figure(figsize=(12, 8))
@@ -58,12 +57,21 @@ def feature_engineering(df):
     return features_selected, labels
 
 def train_and_evaluate_models(features, labels):
-    features_train, features_test, labels_train, labels_test = train_test_split(
-        features, labels, test_size=0.2, random_state=42, stratify=labels
-    )
+    sss = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
+    for train_index, test_index in sss.split(features, labels):
+        features_train, features_test = features[train_index], features[test_index]
+        labels_train, labels_test = labels.iloc[train_index], labels.iloc[test_index]  # ✅ FIXED
 
-    smote = SMOTE(sampling_strategy=0.6, random_state=42)
+    smote = SMOTE(sampling_strategy=0.5, random_state=42)
     features_train_balanced, labels_train_balanced = smote.fit_resample(features_train, labels_train)
+
+    # Visualize Class Distribution Before & After SMOTE
+    plt.figure(figsize=(6,4))
+    sns.barplot(x=["Original Class 0", "Original Class 1"], y=[sum(labels_train==0), sum(labels_train==1)], color='blue', label="Before SMOTE")
+    sns.barplot(x=["Original Class 0", "Original Class 1"], y=[sum(labels_train_balanced==0), sum(labels_train_balanced==1)], color='red', alpha=0.6, label="After SMOTE")
+    plt.title("Class Distribution Before & After SMOTE")
+    plt.legend()
+    plt.show()
 
     models = {
         'Naive Bayes': GaussianNB(),
@@ -83,7 +91,6 @@ def train_and_evaluate_models(features, labels):
         print(f"\n{name} Classification Report:\n")
         print(classification_report(labels_test, test_pred))
 
-    # Voting Classifier Confusion Matrix
     cm = confusion_matrix(labels_test, voting_clf.predict(features_test))
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
     plt.figure(figsize=(8, 6))
@@ -91,7 +98,6 @@ def train_and_evaluate_models(features, labels):
     plt.title('Confusion Matrix - Voting Classifier')
     plt.show()
 
-    # ANN Model
     ann = tf.keras.models.Sequential([
         tf.keras.layers.Dense(64, activation='relu', input_shape=(features_train_balanced.shape[1],)),
         tf.keras.layers.Dropout(0.3),
@@ -101,74 +107,46 @@ def train_and_evaluate_models(features, labels):
     ann.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
     ann.summary()
-
     history = ann.fit(features_train_balanced, labels_train_balanced, validation_split=0.2, batch_size=32, epochs=20, verbose=1)
     ann_score = ann.evaluate(features_test, labels_test)
 
     print(f"\nANN Test Accuracy: {ann_score[1]:.3f}")
 
-    # ANN Confusion Matrix
-    ann_pred = (ann.predict(features_test) > 0.5).astype("int32")
-    cm_ann = confusion_matrix(labels_test, ann_pred)
-    disp_ann = ConfusionMatrixDisplay(confusion_matrix=cm_ann, display_labels=[0, 1])
-    plt.figure(figsize=(8, 6))
-    disp_ann.plot(cmap=plt.cm.Blues)
-    plt.title('Confusion Matrix - ANN')
+    ann_pred_prob = ann.predict(features_test).flatten()
+    ann_pred = (ann_pred_prob > 0.5).astype("int32")
+
+    fpr, tpr, _ = roc_curve(labels_test, ann_pred_prob)
+    plt.figure(figsize=(6,5))
+    plt.plot(fpr, tpr, label=f"ANN AUC = {auc(fpr, tpr):.2f}")
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.title("ROC Curve - ANN")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.legend()
     plt.show()
 
-    # ANN Training Graphs
-    history_dict = history.history
-    epochs = range(1, len(history_dict['accuracy']) + 1)
-
-    plt.figure(figsize=(12,5))
-    plt.subplot(1,2,1)
-    plt.plot(epochs, history_dict['accuracy'], 'bo', label='Training Accuracy')
-    plt.plot(epochs, history_dict['val_accuracy'], 'b', label='Validation Accuracy')
-    plt.title('Training & Validation Accuracy')
+    precision, recall, _ = precision_recall_curve(labels_test, ann_pred_prob)
+    plt.figure(figsize=(6,5))
+    plt.plot(recall, precision, label="Precision-Recall Curve")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title("Precision-Recall Curve - ANN")
     plt.legend()
+    plt.show()
 
-    plt.subplot(1,2,2)
-    plt.plot(epochs, history_dict['loss'], 'ro', label='Training Loss')
-    plt.plot(epochs, history_dict['val_loss'], 'r', label='Validation Loss')
-    plt.title('Training & Validation Loss')
-    plt.legend()
+    explainer = shap.Explainer(models['Random Forest'], features_test)
+    shap_values = explainer(features_test)
+    plt.figure(figsize=(10, 6))
+    shap.summary_plot(shap_values, features_test, plot_type="bar", show=False)
+    plt.title("SHAP Feature Importance")
     plt.show()
 
     return ann, features_test
-
-def save_predictions(ann, features_test):
-    ann_prob = ann.predict(features_test)
-
-    df_results = pd.DataFrame({
-        "Patient ID": range(1, len(ann_prob) + 1),
-        "Cancer Probability (%)": (ann_prob.flatten() * 100),
-        "Prediction": ["Yes" if p > 0.5 else "No" for p in ann_prob.flatten()]
-    })
-
-    # Print "Yes" & "No" Predictions
-    print("\nAll Patient Predictions:")
-    for index, row in df_results.iterrows():
-        print(f"Patient {int(row['Patient ID'])}: Cancer Probability: {row['Cancer Probability (%)']:.2f}% - {row['Prediction']}")
-
-    # Filter Only "Yes" Cases for Saving
-    df_yes = df_results[df_results["Prediction"] == "Yes"]
-
-    # Save Only New "Yes" Cases to CSV
-    file_path = "cancer_positive_patients.csv"
-    if os.path.exists(file_path):
-        df_existing = pd.read_csv(file_path)
-        df_combined = pd.concat([df_existing, df_yes]).drop_duplicates()
-        df_combined.to_csv(file_path, index=False)
-    else:
-        df_yes.to_csv(file_path, index=False)
-
-    print(f"\nUpdated {file_path} with new cancer-positive patients.")
 
 def main():
     df = preprocess_data()
     features, labels = feature_engineering(df)
     ann, features_test = train_and_evaluate_models(features, labels)
-    save_predictions(ann, features_test)
 
 if __name__ == "__main__":
     main()
