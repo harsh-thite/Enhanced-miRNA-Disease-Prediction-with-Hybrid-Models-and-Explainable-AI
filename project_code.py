@@ -106,7 +106,7 @@ def train_and_evaluate_models(features, labels):
     plt.title('Confusion Matrix - Voting Classifier')
     plt.show()
 
-    # ✅ ANN Model
+    # ANN Model
     ann = tf.keras.models.Sequential([
         tf.keras.layers.Dense(64, activation='relu', input_shape=(features_train_balanced.shape[1],)),
         tf.keras.layers.Dropout(0.3),
