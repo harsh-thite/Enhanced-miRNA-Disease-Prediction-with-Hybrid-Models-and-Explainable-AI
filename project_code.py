@@ -174,7 +174,7 @@ def save_predictions(ann, features_test):
         "Prediction": ["Yes" if p > 0.5 else "No" for p in ann_prob.flatten()]
     })
 
-    # ✅ Print "Yes" & "No" Predictions
+    # Print "Yes" & "No" Predictions
     print("\nAll Patient Predictions:")
     for index, row in df_results.iterrows():
         print(f"Patient {int(row['Patient ID'])}: Cancer Probability: {row['Cancer Probability (%)']:.2f}% - {row['Prediction']}")
