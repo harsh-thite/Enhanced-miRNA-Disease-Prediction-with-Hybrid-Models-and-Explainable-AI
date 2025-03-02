@@ -115,7 +115,7 @@ def train_and_evaluate_models(features, labels):
     ])
     ann.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
-    ann.summary()  # ✅ ANN Training Summary
+    ann.summary()  # ANN Training Summary
 
     history = ann.fit(features_train_balanced, labels_train_balanced, validation_split=0.2, batch_size=32, epochs=20,
                       verbose=1)
@@ -126,7 +126,7 @@ def train_and_evaluate_models(features, labels):
     ann_pred_prob = ann.predict(features_test).flatten()
     ann_pred = (ann_pred_prob > 0.5).astype("int32")
 
-    # ✅ Confusion Matrix for ANN Model
+    # Confusion Matrix for ANN Model
     cm_ann = confusion_matrix(labels_test, ann_pred)
     disp_ann = ConfusionMatrixDisplay(confusion_matrix=cm_ann, display_labels=[0, 1])
     plt.figure(figsize=(8, 6))
@@ -134,7 +134,7 @@ def train_and_evaluate_models(features, labels):
     plt.title('Confusion Matrix - ANN')
     plt.show()
 
-    # ✅ ROC Curve for ANN
+    # ROC Curve for ANN
     fpr, tpr, _ = roc_curve(labels_test, ann_pred_prob)
     plt.figure(figsize=(6, 5))
     plt.plot(fpr, tpr, label=f"ANN AUC = {auc(fpr, tpr):.2f}")
@@ -143,7 +143,7 @@ def train_and_evaluate_models(features, labels):
     plt.legend()
     plt.show()
 
-    # ✅ Precision-Recall Curve for ANN
+    # Precision-Recall Curve for ANN
     precision, recall, _ = precision_recall_curve(labels_test, ann_pred_prob)
     plt.figure(figsize=(6, 5))
     plt.plot(recall, precision, label="Precision-Recall Curve")
