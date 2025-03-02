@@ -151,10 +151,17 @@ def train_and_evaluate_models(features, labels):
     plt.legend()
     plt.show()
 
-    # ✅ SHAP Feature Importance
+    # SHAP Explainability for Random Forest (Restored)
+    print("\nGenerating SHAP explanations for Random Forest...")
     explainer = shap.Explainer(models['Random Forest'], features_test)
     shap_values = explainer(features_test)
+
+    # Create SHAP summary plot
+    plt.figure(figsize=(10, 6))
     shap.summary_plot(shap_values, features_test, plot_type="bar", show=False)
+    plt.title("SHAP Feature Importance")
+    plt.tight_layout()
+    plt.show()
 
     return ann, features_test
 
