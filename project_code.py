@@ -98,7 +98,7 @@ def train_and_evaluate_models(features, labels):
         print(f"\n{name} Classification Report:\n")
         print(classification_report(labels_test, test_pred))
 
-    # ✅ Confusion Matrix for Voting Classifier
+    # Confusion Matrix for Voting Classifier
     cm = confusion_matrix(labels_test, voting_clf.predict(features_test))
     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
     plt.figure(figsize=(8, 6))
