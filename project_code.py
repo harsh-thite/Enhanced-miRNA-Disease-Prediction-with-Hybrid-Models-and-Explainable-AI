@@ -179,7 +179,7 @@ def save_predictions(ann, features_test):
     for index, row in df_results.iterrows():
         print(f"Patient {int(row['Patient ID'])}: Cancer Probability: {row['Cancer Probability (%)']:.2f}% - {row['Prediction']}")
 
-    # ✅ Save Only "Yes" Cases for CSV
+    # Save Only "Yes" Cases for CSV
     df_yes = df_results[df_results["Prediction"] == "Yes"]
 
     file_path = "cancer_positive_patients.csv"
