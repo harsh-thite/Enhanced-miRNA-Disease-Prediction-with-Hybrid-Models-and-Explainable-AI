@@ -139,3 +139,4 @@ disp_ann = ConfusionMatrixDisplay(confusion_matrix=cm_ann, display_labels=[0, 1]
 disp_ann.plot(cmap=plt.cm.Blues)
 plt.title('Confusion Matrix - ANN')
 plt.show()
+
